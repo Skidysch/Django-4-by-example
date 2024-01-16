@@ -1,0 +1,43 @@
+# upstream for uWSGI
+upstream uwsgi_app {
+    server unix:/code/educaproject/uwsgi_app.sock;
+}
+
+upstream daphne {
+    server unix:/code/educaproject/daphne.sock;
+}
+
+server {
+    listen 80;
+    server_name www.educaproject.com educaproject.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    ssl_certificate /code/educaproject/ssl/educaproject.crt;
+    ssl_certificate_key /code/educaproject/ssl/educaproject.key;
+    server_name  *.educaproject.com educaproject.com;
+    error_log    stderr warn;
+    access_log   /dev/stdout main;
+
+    location / {
+        include      /etc/nginx/uwsgi_params;
+        uwsgi_pass   uwsgi_app;
+    }
+
+    location /ws/ {
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade $http_upgrade;
+        proxy_set_header   Connection "Upgrade";
+        proxy_redirect     off;
+        proxy_pass         http://daphne;
+    }
+
+    location /static/ {
+        alias /code/educaproject/static/;
+    }
+    location /media/ {
+        alias /code/educaproject/media/;
+    }
+}
